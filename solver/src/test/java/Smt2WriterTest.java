@@ -1,5 +1,6 @@
 import org.evomaster.client.java.controller.api.dto.database.schema.TableCheckExpressionDto;
 import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -42,6 +43,29 @@ public class Smt2WriterTest {
                 "(get-value (STOCK))\n";
 
         assertEquals(expected, text);
+    }
+
+    @Disabled
+    @Test
+    public void productDescription() {
+        Smt2Writer writer = new Smt2Writer();
+        boolean succeed = writer.addTableCheckExpression(CheckExpressionFrom("(\"DESCRIPTION\" IN(CAST('APPROVED' AS CHARACTER LARGE OBJECT(8)), CAST('DENIED' AS CHARACTER LARGE OBJECT(6))))"));
+
+        assertTrue(succeed);
+
+        String text = writer.asText();
+
+        String expected = "(set-logic QF_LIA)\n" +
+                "(declare-const PRICE Int)\n" +
+                "(declare-const STOCK Int)\n" +
+                "(assert (> PRICE 1000))\n" +
+                "(assert (>= STOCK 5))\n" +
+                "(check-sat)\n" +
+                "(get-value (PRICE))\n" +
+                "(get-value (STOCK))\n";
+
+        assertEquals(expected, text);
+
     }
 
     private String expectedSmt2(String cmp, String val) {
