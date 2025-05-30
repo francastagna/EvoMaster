@@ -420,9 +420,16 @@ class Main {
                 else -> throw IllegalStateException("Unrecognized problem type: ${config.problemType}")
             }
 
+            val modules = mutableListOf(base, problemModule)
+            
+            // Add DatadogModule if Datadog integration is enabled
+            if (config.enableDatadogIntegration) {
+                modules.add(org.evomaster.core.search.service.DatadogModule())
+            }
+            
             val injector = try {
                 LifecycleInjector.builder()
-                        .withModules(base, problemModule)
+                        .withModules(modules)
                         .build()
                         .createInjector()
 
