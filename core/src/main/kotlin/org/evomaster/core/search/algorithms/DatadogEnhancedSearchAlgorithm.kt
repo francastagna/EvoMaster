@@ -3,9 +3,11 @@ package org.evomaster.core.search.algorithms
 import com.google.inject.Inject
 import org.evomaster.core.EMConfig
 import org.evomaster.core.logging.DatadogIntegration
+import org.evomaster.core.search.FitnessValue
 import org.evomaster.core.search.Individual
 import org.evomaster.core.search.Solution
-import org.evomaster.core.search.service.SearchAlgorithm
+import org.evomaster.core.search.service.Archive
+import org.evomaster.core.search.service.SearchTimeController
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.time.Duration
@@ -25,6 +27,9 @@ class DatadogEnhancedSearchAlgorithm<T> : MioAlgorithm<T>() where T : Individual
 
     @Inject
     private lateinit var datadogIntegration: DatadogIntegration
+    
+    @Inject
+    private lateinit var time: SearchTimeController
 
     private var lastDatadogQueryTime: Instant = Instant.now()
 
@@ -40,13 +45,14 @@ class DatadogEnhancedSearchAlgorithm<T> : MioAlgorithm<T>() where T : Individual
         }
     }
 
-    override fun getType(): SearchAlgorithm.Type {
-        return SearchAlgorithm.Type.CUSTOM
+    override fun getType(): EMConfig.Algorithm {
+        return EMConfig.Algorithm.MIO // Use MIO as base type since this is an enhanced version
     }
 
     override fun searchOnce(iteration: Int, archive: Archive<T>): Boolean {
         // Start tracking this test execution in Datadog
         val testId = datadogIntegration.startTestExecution()
+        val startTime = System.currentTimeMillis()
         
         try {
             // Check if it's time to query Datadog for insights
@@ -58,14 +64,15 @@ class DatadogEnhancedSearchAlgorithm<T> : MioAlgorithm<T>() where T : Individual
             val result = super.searchOnce(iteration, archive)
             
             // Log the result to Datadog
-            val executionTime = 0L // TODO: Calculate actual execution time
-            val coverage = archive.getCoverageMetrics().coveragePercentage
+            val executionTime = System.currentTimeMillis() - startTime
+            val coverage = archive.coveredTargets().size.toDouble() / (archive.coveredTargets().size + archive.notCoveredTargets().size) * 100
             datadogIntegration.endTestExecution(testId, result, executionTime, coverage)
             
             return result
         } catch (e: Exception) {
             log.error("Error during search iteration: ${e.message}", e)
-            datadogIntegration.endTestExecution(testId, false, 0L, 0.0)
+            val executionTime = System.currentTimeMillis() - startTime
+            datadogIntegration.endTestExecution(testId, false, executionTime, 0.0)
             return false
         }
     }
@@ -96,28 +103,56 @@ class DatadogEnhancedSearchAlgorithm<T> : MioAlgorithm<T>() where T : Individual
         lastDatadogQueryTime = Instant.now()
         
         try {
-            // TODO: Implement actual Datadog log query logic here
-            // This would involve:
-            // 1. Querying Datadog API for relevant logs
-            // 2. Analyzing the logs for patterns or insights
-            // 3. Adjusting search parameters based on the insights
+            // Query Datadog for recent log data
+            val queryResult = datadogIntegration.queryDatadogLogs(config.datadogQueryFrequency / 60)
             
-            // For now, we'll just log that we're doing this
-            log.info("Adjusting search parameters based on Datadog insights")
+            if (queryResult == null) {
+                log.warn("Failed to get insights from Datadog")
+                return
+            }
             
-            // Example of how we might adjust parameters:
-            // - Increase focus on endpoints with errors
-            // - Adjust mutation rates for specific genes
-            // - Prioritize test cases that trigger interesting behaviors
+            // Analyze the results and get parameter adjustment suggestions
+            val adjustments = datadogIntegration.suggestParameterAdjustments(queryResult)
             
-            // Log the decision to Datadog
+            // Apply parameter adjustments if any are suggested
+            if (adjustments.adjustRandomSampling && adjustments.newRandomProbability != null) {
+                // Note: In a real implementation, we would need to modify the AdaptiveParameterControl
+                // For now, we log the decision and could store it for the next iteration
+                log.info("Suggesting random sampling probability adjustment to ${adjustments.newRandomProbability}")
+                datadogIntegration.logSearchDecision(
+                    "datadog_query_${lastDatadogQueryTime.epochSecond}",
+                    "adjust_random_sampling",
+                    "New probability: ${adjustments.newRandomProbability}"
+                )
+            }
+            
+            if (adjustments.adjustMutationCount && adjustments.newMutationCount != null) {
+                log.info("Suggesting mutation count adjustment to ${adjustments.newMutationCount}")
+                datadogIntegration.logSearchDecision(
+                    "datadog_query_${lastDatadogQueryTime.epochSecond}",
+                    "adjust_mutation_count",
+                    "New count: ${adjustments.newMutationCount}"
+                )
+            }
+            
+            if (adjustments.adjustArchiveLimit && adjustments.newArchiveLimit != null) {
+                log.info("Suggesting archive limit adjustment to ${adjustments.newArchiveLimit}")
+                datadogIntegration.logSearchDecision(
+                    "datadog_query_${lastDatadogQueryTime.epochSecond}",
+                    "adjust_archive_limit",
+                    "New limit: ${adjustments.newArchiveLimit}"
+                )
+            }
+            
+            // Log the overall decision
             datadogIntegration.logSearchDecision(
                 "datadog_query_${lastDatadogQueryTime.epochSecond}",
-                "adjusted_search_parameters",
-                "Based on log analysis"
+                "parameter_analysis_complete",
+                adjustments.reason.ifEmpty { "No adjustments needed" }
             )
+            
         } catch (e: Exception) {
-            log.error("Error querying Datadog for insights: ${e.message}", e)
+            log.error("Error analyzing Datadog insights: ${e.message}", e)
         }
     }
 
@@ -126,8 +161,21 @@ class DatadogEnhancedSearchAlgorithm<T> : MioAlgorithm<T>() where T : Individual
         
         if (config.datadogEnabled) {
             // Log final solution metrics to Datadog
+            val finalTestId = "solution_${System.currentTimeMillis()}"
             log.info("Logging final solution metrics to Datadog")
-            // TODO: Add more detailed metrics about the solution
+            
+            datadogIntegration.endTestExecution(
+                testId = finalTestId,
+                success = true,
+                executionTime = time.elapsedTimeInMs(),
+                coverage = solution.overall.getViewOfData().values.count { it.score == FitnessValue.MAX_VALUE }.toDouble() / solution.overall.getViewOfData().size * 100
+            )
+            
+            datadogIntegration.logSearchDecision(
+                testId = finalTestId,
+                decision = "solution_generated",
+                reason = "Final solution with ${solution.individuals.size} test cases"
+            )
         }
         
         return solution
