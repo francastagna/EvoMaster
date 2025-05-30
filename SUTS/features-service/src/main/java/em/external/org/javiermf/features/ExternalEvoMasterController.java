@@ -85,6 +85,13 @@ public class ExternalEvoMasterController extends ExternalSutController {
         this.timeoutSeconds = timeoutSeconds;
         setControllerPort(controllerPort);
         setJavaCommand(command);
+        
+        if (Boolean.parseBoolean(System.getProperty("evomaster.datadog.enabled", "false"))) {
+            String serviceName = System.getProperty("evomaster.datadog.service.name", "features-service");
+            String agentPath = System.getProperty("evomaster.datadog.agent.path", 
+                    "client-java/controller/src/main/resources/DatadogAgent/dd-java-agent.jar");
+            setDatadog(agentPath, serviceName);
+        }
     }
 
     private String dbUrl( ) {

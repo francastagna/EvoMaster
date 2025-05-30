@@ -33,17 +33,21 @@ class DatadogIntegration @Inject constructor() {
     
     fun getSutMetrics(timeRangeMinutes: Int = 15): DatadogMetrics? {
         if (!config.enableDatadogIntegration || config.datadogApiKey.isEmpty() || config.datadogAppKey.isEmpty()) {
+            log.debug("Datadog integration is disabled or missing credentials")
             return null
         }
         
         return try {
+            log.info("Querying Datadog metrics from ${config.datadogApiUrl} for service ${config.datadogServiceName}")
             val errorRate = getErrorRate(timeRangeMinutes)
             val avgResponseTime = getAvgResponseTime(timeRangeMinutes)
             val p95ResponseTime = getP95ResponseTime(timeRangeMinutes)
             val securitySignalsCount = getSecuritySignalsCount(timeRangeMinutes)
             val criticalFindingsCount = getCriticalFindingsCount(timeRangeMinutes)
             
-            DatadogMetrics(errorRate, avgResponseTime, p95ResponseTime, securitySignalsCount, criticalFindingsCount)
+            val metrics = DatadogMetrics(errorRate, avgResponseTime, p95ResponseTime, securitySignalsCount, criticalFindingsCount)
+            log.info("Retrieved Datadog metrics: $metrics")
+            metrics
         } catch (e: Exception) {
             log.warn("Failed to retrieve Datadog metrics: ${e.message}")
             null

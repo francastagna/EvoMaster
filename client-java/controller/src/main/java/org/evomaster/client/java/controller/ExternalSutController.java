@@ -70,6 +70,16 @@ public abstract class ExternalSutController extends SutController {
      * Port of JaCoCo agent server
      */
     private volatile int jaCoCoPort = 0;
+    
+    /**
+     * Path on filesystem of where Datadog Agent jar file is located
+     */
+    private volatile String datadogAgentLocation = "";
+    
+    /**
+     * Service name for Datadog
+     */
+    private volatile String datadogServiceName = "";
 
     private volatile boolean needsJdk17Options = false;
 
@@ -79,6 +89,12 @@ public abstract class ExternalSutController extends SutController {
         this.jaCoCoCliLocation = jaCoCoCliLocation;
         this.jaCoCoOutputFile = jaCoCoOutputFile;
         this.jaCoCoPort = port;
+        return this;
+    }
+    
+    public final ExternalSutController setDatadog(String datadogAgentLocation, String datadogServiceName){
+        this.datadogAgentLocation = datadogAgentLocation;
+        this.datadogServiceName = datadogServiceName;
         return this;
     }
 
@@ -264,6 +280,15 @@ public abstract class ExternalSutController extends SutController {
             //command.add("-javaagent:"+jaCoCoLocation+"=destfile="+jaCoCoOutputFile+",append=false,dumponexit=true");
             command.add("-javaagent:"+ jaCoCoAgentLocation +"=output=tcpserver,port="+jaCoCoPort+",append=false,dumponexit=true");
             //tcpserver
+        }
+        
+        if(isUsingDatadog()){
+            command.add("-javaagent:" + datadogAgentLocation);
+            command.add("-Ddd.service=" + datadogServiceName);
+            command.add("-Ddd.agent.host=localhost");
+            command.add("-Ddd.agent.port=8126");
+            command.add("-Ddd.trace.enabled=true");
+            command.add("-Ddd.logs.injection=true");
         }
 
         command.add("-jar");
@@ -521,6 +546,10 @@ public abstract class ExternalSutController extends SutController {
 
     private boolean isUsingJaCoCo(){
         return !jaCoCoAgentLocation.isEmpty() && !jaCoCoOutputFile.isEmpty() && !jaCoCoCliLocation.isEmpty();
+    }
+    
+    private boolean isUsingDatadog(){
+        return !datadogAgentLocation.isEmpty() && !datadogServiceName.isEmpty();
     }
 
     private void checkInstrumentation() {
