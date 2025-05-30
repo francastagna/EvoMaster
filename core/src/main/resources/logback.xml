@@ -3,6 +3,7 @@
     <!--  Enable logs that can be printed only once  -->
     <turboFilter class="org.evomaster.core.logging.UniqueTurboFilter" />
 
+    <!-- Standard console appender for human-readable logs -->
     <appender name="REGULAR_STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
@@ -15,20 +16,54 @@
         </encoder>
     </appender>
 
+    <!-- Datadog JSON appender for machine-readable logs -->
+    <appender name="DATADOG_JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/evomaster.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/evomaster.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>7</maxHistory>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdc>true</includeMdc>
+            <includeContext>true</includeContext>
+            <customFields>{"service_name":"evomaster","application":"evomaster-search"}</customFields>
+        </encoder>
+    </appender>
+
+    <!-- Datadog appender for search algorithm metrics -->
+    <appender name="DATADOG_SEARCH_METRICS" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/evomaster-search-metrics.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/evomaster-search-metrics.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>7</maxHistory>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdc>true</includeMdc>
+            <includeContext>true</includeContext>
+            <customFields>{"service_name":"evomaster","application":"evomaster-search-metrics"}</customFields>
+        </encoder>
+    </appender>
+
     <!-- Avoid annoying and pointless WARN messages from Governator -->
     <logger name="com.netflix.governator.lifecycle.ClasspathScanner" level="ERROR" />
 
     <!-- Schema issues should be handled programmatically, and not flood the logs-->
     <logger name="io.swagger" level="OFF" />
 
-
+    <!-- Root logger configuration -->
     <root level="warn">
         <appender-ref ref="REGULAR_STDOUT" />
+        <appender-ref ref="DATADOG_JSON" />
     </root>
 
     <!-- Logger used to provide expected info to the user -->
     <logger name="info_logger" level="INFO" additivity="false">
         <appender-ref ref="INFO_STDOUT" />
+    </logger>
+
+    <!-- Logger for search algorithm metrics -->
+    <logger name="search_metrics" level="INFO" additivity="false">
+        <appender-ref ref="DATADOG_SEARCH_METRICS" />
     </logger>
 
     <!-- Avoid annoying and pointless messages from WM, as those depend on how SUT interacts with it -->

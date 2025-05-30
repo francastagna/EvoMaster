@@ -6,6 +6,7 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.inject.Inject
 import org.evomaster.core.EMConfig
+import org.evomaster.core.logging.DatadogIntegration
 import org.evomaster.core.output.TestSuiteFileName
 import org.evomaster.core.output.service.TestSuiteWriter
 import org.evomaster.core.problem.api.param.Param
@@ -47,6 +48,9 @@ class SearchProcessMonitor: SearchListener {
 
     @Inject(optional = true)
     private var controller: RemoteController? = null
+    
+    @Inject(optional = true)
+    private var datadogIntegration: DatadogIntegration? = null
 
     private lateinit var overall : SearchOverall<*>
 
@@ -158,6 +162,31 @@ class SearchProcessMonitor: SearchListener {
                 if(config.processInterval > 0.0) tb++
             }
         }
+        
+        // Log to Datadog if enabled
+        if (config.datadogEnabled && datadogIntegration != null) {
+            val testId = "test_${time.evaluatedIndividuals}"
+            
+            // Log fitness values for each target
+            evalInd.fitness.getViewOfData().forEach { (targetId, fitnessValue) ->
+                datadogIntegration!!.logFitnessEvaluation(
+                    testId = testId,
+                    targetId = idMapper.getDescriptiveId(targetId),
+                    individualId = evalInd.individual.id.toString(),
+                    fitnessValue = fitnessValue.score,
+                    iteration = time.evaluatedIndividuals.toLong()
+                )
+            }
+            
+            // Log if the individual was added to the archive
+            if (added) {
+                datadogIntegration!!.logSearchDecision(
+                    testId = testId,
+                    decision = "individual_added_to_archive",
+                    reason = "Improved fitness: $improveArchive"
+                )
+            }
+        }
     }
 
 
@@ -193,7 +222,29 @@ class SearchProcessMonitor: SearchListener {
             }
             else ->{}
         }
-
+        
+        // Log final metrics to Datadog if enabled
+        if (config.datadogEnabled && datadogIntegration != null) {
+            val testId = "final_${System.currentTimeMillis()}"
+            
+            // Log overall statistics
+            val coveragePercentage = archive.getCoverageMetrics().coveragePercentage
+            val executionTime = System.currentTimeMillis() - time.getStartTime()
+            
+            datadogIntegration!!.endTestExecution(
+                testId = testId,
+                success = true,
+                executionTime = executionTime,
+                coverage = coveragePercentage
+            )
+            
+            // Log a summary decision
+            datadogIntegration!!.logSearchDecision(
+                testId = testId,
+                decision = "search_completed",
+                reason = "Evaluated ${time.evaluatedIndividuals} individuals, achieved ${coveragePercentage}% coverage"
+            )
+        }
     }
 
     fun getOverallProcessAsPath() = "${config.processFiles}${File.separator}${getOverallFileName()}"
