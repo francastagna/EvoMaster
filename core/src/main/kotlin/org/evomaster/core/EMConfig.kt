@@ -1057,11 +1057,29 @@ class EMConfig {
     var avoidNonDeterministicLogs = false
 
     enum class Algorithm {
-        DEFAULT, SMARTS, MIO, RANDOM, WTS, MOSA
+        DEFAULT, SMARTS, MIO, RANDOM, WTS, MOSA, DATADOG_ENHANCED
     }
 
     @Cfg("The algorithm used to generate test cases. The default depends on whether black-box or white-box testing is done.")
     var algorithm = Algorithm.DEFAULT
+
+    @Cfg("Enable Datadog integration for SUT observability")
+    var enableDatadogIntegration = false
+
+    @Cfg("Datadog API key for authentication")
+    var datadogApiKey = ""
+
+    @Cfg("Datadog application key for authentication") 
+    var datadogAppKey = ""
+
+    @Cfg("Datadog API base URL")
+    var datadogApiUrl = "https://api.datadoghq.com"
+
+    @Cfg("Interval in seconds for polling Datadog metrics")
+    var datadogPollingInterval = 30
+
+    @Cfg("Service name for identifying SUT in Datadog")
+    var datadogServiceName = "evomaster-sut"
 
     /**
      * Workaround for issues with annotations that can not be applied on ENUM values,
