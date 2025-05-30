@@ -1124,7 +1124,7 @@ class EMConfig {
     var avoidNonDeterministicLogs = false
 
     enum class Algorithm {
-        DEFAULT, SMARTS, MIO, RANDOM, WTS, MOSA, RW
+        DEFAULT, SMARTS, MIO, RANDOM, WTS, MOSA, RW, DATADOG_ENHANCED
     }
 
     @Cfg("The algorithm used to generate test cases. The default depends on whether black-box or white-box testing is done.")
@@ -2600,41 +2600,35 @@ class EMConfig {
      * Enable Datadog integration for observability and enhanced search
      */
     @Cfg("Enable Datadog integration for observability and enhanced search")
-    @Parameter(names = ["-datadogEnabled", "--datadog_enabled"], description = "Enable Datadog integration for observability and enhanced search")
     var datadogEnabled = false
     
     /**
      * Datadog API key for authentication
      */
     @Cfg("Datadog API key for authentication")
-    @Parameter(names = ["-datadogApiKey", "--datadog_api_key"], description = "Datadog API key for authentication")
     var datadogApiKey = ""
     
     /**
      * Datadog application key for authentication
      */
     @Cfg("Datadog application key for authentication")
-    @Parameter(names = ["-datadogAppKey", "--datadog_app_key"], description = "Datadog application key for authentication")
     var datadogAppKey = ""
     
     /**
      * Datadog service name for identifying the application in Datadog
      */
     @Cfg("Datadog service name for identifying the application in Datadog")
-    @Parameter(names = ["-datadogServiceName", "--datadog_service_name"], description = "Datadog service name for identifying the application in Datadog")
     var datadogServiceName = "evomaster"
     
     /**
      * Enable enhanced search algorithm using Datadog logs
      */
     @Cfg("Enable enhanced search algorithm using Datadog logs")
-    @Parameter(names = ["-datadogEnhancedSearch", "--datadog_enhanced_search"], description = "Enable enhanced search algorithm using Datadog logs")
     var datadogEnhancedSearch = false
     
     /**
      * Frequency of Datadog log queries for enhanced search (in seconds)
      */
     @Cfg("Frequency of Datadog log queries for enhanced search (in seconds)")
-    @Parameter(names = ["-datadogQueryFrequency", "--datadog_query_frequency"], description = "Frequency of Datadog log queries for enhanced search (in seconds)")
     var datadogQueryFrequency = 30
 }

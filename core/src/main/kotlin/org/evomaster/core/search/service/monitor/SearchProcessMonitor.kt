@@ -172,7 +172,7 @@ class SearchProcessMonitor: SearchListener {
                 datadogIntegration!!.logFitnessEvaluation(
                     testId = testId,
                     targetId = idMapper.getDescriptiveId(targetId),
-                    individualId = evalInd.individual.id.toString(),
+                    individualId = evalInd.individual.toString(),
                     fitnessValue = fitnessValue.score,
                     iteration = time.evaluatedIndividuals.toLong()
                 )
@@ -228,7 +228,9 @@ class SearchProcessMonitor: SearchListener {
             val testId = "final_${System.currentTimeMillis()}"
             
             // Log overall statistics
-            val coveragePercentage = archive.getCoverageMetrics().coveragePercentage
+            val covered = archive.coveredTargets().size
+            val total = covered + archive.notCoveredTargets().size
+            val coveragePercentage = if (total > 0) (covered.toDouble() / total) * 100 else 0.0
             val executionTime = System.currentTimeMillis() - time.getStartTime()
             
             datadogIntegration!!.endTestExecution(

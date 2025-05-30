@@ -37,6 +37,7 @@ import org.evomaster.core.remote.service.RemoteController
 import org.evomaster.core.remote.service.RemoteControllerImplementation
 import org.evomaster.core.search.Solution
 import org.evomaster.core.search.algorithms.*
+import org.evomaster.core.search.algorithms.DatadogEnhancedSearchAlgorithm
 import org.evomaster.core.search.service.*
 import org.evomaster.core.search.service.monitor.SearchProcessMonitor
 import org.evomaster.core.search.service.mutator.genemutation.ArchiveImpactSelector
@@ -607,6 +608,9 @@ class Main {
 
                 EMConfig.Algorithm.RW ->
                     Key.get(object : TypeLiteral<RandomWalkAlgorithm<GraphQLIndividual>>() {})
+                    
+                EMConfig.Algorithm.DATADOG_ENHANCED ->
+                    Key.get(object : TypeLiteral<DatadogEnhancedSearchAlgorithm<GraphQLIndividual>>() {})
 
                 else -> throw IllegalStateException("Unrecognized algorithm ${config.algorithm}")
             }
@@ -632,6 +636,9 @@ class Main {
 
                 EMConfig.Algorithm.RW ->
                     Key.get(object : TypeLiteral<RandomWalkAlgorithm<RPCIndividual>>() {})
+                    
+                EMConfig.Algorithm.DATADOG_ENHANCED ->
+                    Key.get(object : TypeLiteral<DatadogEnhancedSearchAlgorithm<RPCIndividual>>() {})
 
                 else -> throw IllegalStateException("Unrecognized algorithm ${config.algorithm}")
             }
@@ -657,6 +664,9 @@ class Main {
 
                 EMConfig.Algorithm.RW ->
                     Key.get(object : TypeLiteral<RandomWalkAlgorithm<WebIndividual>>() {})
+                    
+                EMConfig.Algorithm.DATADOG_ENHANCED ->
+                    Key.get(object : TypeLiteral<DatadogEnhancedSearchAlgorithm<WebIndividual>>() {})
 
                 else -> throw IllegalStateException("Unrecognized algorithm ${config.algorithm}")
             }
@@ -682,6 +692,9 @@ class Main {
 
                 EMConfig.Algorithm.RW ->
                     Key.get(object : TypeLiteral<RandomWalkAlgorithm<RestIndividual>>() {})
+                    
+                EMConfig.Algorithm.DATADOG_ENHANCED ->
+                    Key.get(object : TypeLiteral<DatadogEnhancedSearchAlgorithm<RestIndividual>>() {})
 
                 else -> throw IllegalStateException("Unrecognized algorithm ${config.algorithm}")
             }

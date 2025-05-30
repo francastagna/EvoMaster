@@ -8,53 +8,63 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 /**
- * Adaptive parameter control that can be dynamically adjusted based on Datadog insights
+ * Parameter adjustment tracker for Datadog-enhanced search algorithm.
+ * Uses composition instead of inheritance since AdaptiveParameterControl is final.
  */
-class DatadogAdaptiveParameterControl : AdaptiveParameterControl() {
+class DatadogParameterTracker {
     
     companion object {
-        private val log: Logger = LoggerFactory.getLogger(DatadogAdaptiveParameterControl::class.java)
+        private val log: Logger = LoggerFactory.getLogger(DatadogParameterTracker::class.java)
     }
     
-    // Override values that can be dynamically adjusted
-    private var dynamicRandomProbability: Double? = null
-    private var dynamicMutationCount: Int? = null
-    private var dynamicArchiveLimit: Int? = null
+    // Values that can be dynamically adjusted
+    private var randomSamplingAdjustment: Double? = null
+    private var mutationCountAdjustment: Int? = null
+    private var archiveLimitAdjustment: Int? = null
     
-    override fun getProbRandomSampling(): Double {
-        return dynamicRandomProbability ?: super.getProbRandomSampling()
+    /**
+     * Get the adjusted random sampling probability or null if no adjustment
+     */
+    fun getRandomSamplingAdjustment(): Double? {
+        return randomSamplingAdjustment
     }
     
-    override fun getNumberOfMutations(): Int {
-        return dynamicMutationCount ?: super.getNumberOfMutations()
+    /**
+     * Get the adjusted mutation count or null if no adjustment
+     */
+    fun getMutationCountAdjustment(): Int? {
+        return mutationCountAdjustment
     }
     
-    override fun getArchiveTargetLimit(): Int {
-        return dynamicArchiveLimit ?: super.getArchiveTargetLimit()
+    /**
+     * Get the adjusted archive limit or null if no adjustment
+     */
+    fun getArchiveLimitAdjustment(): Int? {
+        return archiveLimitAdjustment
     }
     
     /**
      * Adjust random sampling probability based on insights
      */
     fun adjustRandomSamplingProbability(newProbability: Double, reason: String) {
-        log.info("Adjusting random sampling probability from ${getProbRandomSampling()} to $newProbability. Reason: $reason")
-        dynamicRandomProbability = newProbability.coerceIn(0.0, 1.0)
+        log.info("Adjusting random sampling probability to $newProbability. Reason: $reason")
+        randomSamplingAdjustment = newProbability.coerceIn(0.0, 1.0)
     }
     
     /**
      * Adjust mutation count based on insights
      */
     fun adjustMutationCount(newCount: Int, reason: String) {
-        log.info("Adjusting mutation count from ${getNumberOfMutations()} to $newCount. Reason: $reason")
-        dynamicMutationCount = newCount.coerceAtLeast(1)
+        log.info("Adjusting mutation count to $newCount. Reason: $reason")
+        mutationCountAdjustment = newCount.coerceAtLeast(1)
     }
     
     /**
      * Adjust archive limit based on insights
      */
     fun adjustArchiveLimit(newLimit: Int, reason: String) {
-        log.info("Adjusting archive limit from ${getArchiveTargetLimit()} to $newLimit. Reason: $reason")
-        dynamicArchiveLimit = newLimit.coerceAtLeast(1)
+        log.info("Adjusting archive limit to $newLimit. Reason: $reason")
+        archiveLimitAdjustment = newLimit.coerceAtLeast(1)
     }
     
     /**
@@ -62,9 +72,9 @@ class DatadogAdaptiveParameterControl : AdaptiveParameterControl() {
      */
     fun resetToDefaults() {
         log.info("Resetting all parameter adjustments to default values")
-        dynamicRandomProbability = null
-        dynamicMutationCount = null
-        dynamicArchiveLimit = null
+        randomSamplingAdjustment = null
+        mutationCountAdjustment = null
+        archiveLimitAdjustment = null
     }
     
     /**
@@ -72,14 +82,14 @@ class DatadogAdaptiveParameterControl : AdaptiveParameterControl() {
      */
     fun getAdjustmentSummary(): String {
         val adjustments = mutableListOf<String>()
-        if (dynamicRandomProbability != null) {
-            adjustments.add("Random sampling: ${dynamicRandomProbability}")
+        if (randomSamplingAdjustment != null) {
+            adjustments.add("Random sampling: ${randomSamplingAdjustment}")
         }
-        if (dynamicMutationCount != null) {
-            adjustments.add("Mutations: ${dynamicMutationCount}")
+        if (mutationCountAdjustment != null) {
+            adjustments.add("Mutations: ${mutationCountAdjustment}")
         }
-        if (dynamicArchiveLimit != null) {
-            adjustments.add("Archive limit: ${dynamicArchiveLimit}")
+        if (archiveLimitAdjustment != null) {
+            adjustments.add("Archive limit: ${archiveLimitAdjustment}")
         }
         return if (adjustments.isEmpty()) "No active adjustments" else adjustments.joinToString(", ")
     }
