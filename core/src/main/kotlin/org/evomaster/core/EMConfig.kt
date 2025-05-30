@@ -1073,7 +1073,7 @@ class EMConfig {
     var datadogAppKey = ""
 
     @Cfg("Datadog API base URL")
-    var datadogApiUrl = "https://api.datadoghq.com"
+    var datadogApiUrl = "https://us5.datadoghq.com"
 
     @Cfg("Interval in seconds for polling Datadog metrics")
     var datadogPollingInterval = 30
