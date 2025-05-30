@@ -6,6 +6,7 @@ import org.evomaster.core.logging.DatadogIntegration
 import org.evomaster.core.search.FitnessValue
 import org.evomaster.core.search.Individual
 import org.evomaster.core.search.Solution
+import org.evomaster.core.search.service.AdaptiveParameterControl
 import org.evomaster.core.search.service.Archive
 import org.evomaster.core.search.service.SearchTimeController
 import org.slf4j.Logger
@@ -17,7 +18,7 @@ import javax.annotation.PostConstruct
 /**
  * An extension of the MIO algorithm that uses Datadog logs to enhance the search process.
  * This algorithm periodically queries Datadog for insights from logs and uses that information
- * to guide the search process.
+ * to guide the search process by dynamically adjusting search parameters.
  */
 class DatadogEnhancedSearchAlgorithm<T> : MioAlgorithm<T>() where T : Individual {
 
@@ -30,6 +31,9 @@ class DatadogEnhancedSearchAlgorithm<T> : MioAlgorithm<T>() where T : Individual
     
     @Inject
     private lateinit var time: SearchTimeController
+    
+    // Custom parameter control that allows dynamic adjustments
+    private val datadogParameterControl = DatadogAdaptiveParameterControl()
 
     private var lastDatadogQueryTime: Instant = Instant.now()
 
@@ -37,8 +41,12 @@ class DatadogEnhancedSearchAlgorithm<T> : MioAlgorithm<T>() where T : Individual
     override fun initialize() {
         super.initialize()
         
+        // Initialize the custom parameter control with the same dependencies
+        datadogParameterControl.config = config
+        datadogParameterControl.time = time
+        
         if (config.datadogEnabled && config.datadogEnhancedSearch) {
-            log.info("Initializing Datadog Enhanced Search Algorithm")
+            log.info("Initializing Datadog Enhanced Search Algorithm with dynamic parameter control")
         } else {
             log.warn("Datadog Enhanced Search Algorithm is configured but Datadog integration is not enabled. " +
                     "Set datadogEnabled=true and datadogEnhancedSearch=true to enable enhanced search.")
@@ -60,15 +68,33 @@ class DatadogEnhancedSearchAlgorithm<T> : MioAlgorithm<T>() where T : Individual
                 adjustSearchBasedOnDatadogInsights(archive)
             }
             
-            // Perform the standard MIO search iteration
-            val result = super.searchOnce(iteration, archive)
+            // Use the custom parameter control for this iteration
+            val apc = datadogParameterControl
+            
+            // Perform MIO search iteration with dynamic parameters
+            val individual = if (randomness.nextDouble() < apc.getProbRandomSampling()) {
+                sampler.sample()
+            } else {
+                if (apc.useFocusedSearch()) {
+                    sampler.sampleAtRandom()
+                } else {
+                    archive.sampleAtRandom()
+                }
+            }
+            
+            mutator.mutateAndSave(apc.getNumberOfMutations(), individual, archive)
+            val done = evaluateFitness(individual)
+            
+            archive.addIfNeeded(individual, apc.getArchiveTargetLimit())
             
             // Log the result to Datadog
             val executionTime = System.currentTimeMillis() - startTime
-            val coverage = archive.coveredTargets().size.toDouble() / (archive.coveredTargets().size + archive.notCoveredTargets().size) * 100
-            datadogIntegration.endTestExecution(testId, result, executionTime, coverage)
+            val coverage = archive.coveredTargets().size.toDouble() / 
+                          (archive.coveredTargets().size + archive.notCoveredTargets().size) * 100
+            datadogIntegration.endTestExecution(testId, done, executionTime, coverage)
             
-            return result
+            return done
+            
         } catch (e: Exception) {
             log.error("Error during search iteration: ${e.message}", e)
             val executionTime = System.currentTimeMillis() - startTime
@@ -114,41 +140,52 @@ class DatadogEnhancedSearchAlgorithm<T> : MioAlgorithm<T>() where T : Individual
             // Analyze the results and get parameter adjustment suggestions
             val adjustments = datadogIntegration.suggestParameterAdjustments(queryResult)
             
-            // Apply parameter adjustments if any are suggested
+            // Apply parameter adjustments directly to the search algorithm
             if (adjustments.adjustRandomSampling && adjustments.newRandomProbability != null) {
-                // Note: In a real implementation, we would need to modify the AdaptiveParameterControl
-                // For now, we log the decision and could store it for the next iteration
-                log.info("Suggesting random sampling probability adjustment to ${adjustments.newRandomProbability}")
+                datadogParameterControl.adjustRandomSamplingProbability(
+                    adjustments.newRandomProbability,
+                    "Datadog insight: ${adjustments.reason}"
+                )
+                
                 datadogIntegration.logSearchDecision(
                     "datadog_query_${lastDatadogQueryTime.epochSecond}",
                     "adjust_random_sampling",
-                    "New probability: ${adjustments.newRandomProbability}"
+                    "Applied probability: ${adjustments.newRandomProbability}"
                 )
             }
             
             if (adjustments.adjustMutationCount && adjustments.newMutationCount != null) {
-                log.info("Suggesting mutation count adjustment to ${adjustments.newMutationCount}")
+                datadogParameterControl.adjustMutationCount(
+                    adjustments.newMutationCount,
+                    "Datadog insight: ${adjustments.reason}"
+                )
+                
                 datadogIntegration.logSearchDecision(
                     "datadog_query_${lastDatadogQueryTime.epochSecond}",
                     "adjust_mutation_count",
-                    "New count: ${adjustments.newMutationCount}"
+                    "Applied count: ${adjustments.newMutationCount}"
                 )
             }
             
             if (adjustments.adjustArchiveLimit && adjustments.newArchiveLimit != null) {
-                log.info("Suggesting archive limit adjustment to ${adjustments.newArchiveLimit}")
+                datadogParameterControl.adjustArchiveLimit(
+                    adjustments.newArchiveLimit,
+                    "Datadog insight: ${adjustments.reason}"
+                )
+                
                 datadogIntegration.logSearchDecision(
                     "datadog_query_${lastDatadogQueryTime.epochSecond}",
                     "adjust_archive_limit",
-                    "New limit: ${adjustments.newArchiveLimit}"
+                    "Applied limit: ${adjustments.newArchiveLimit}"
                 )
             }
             
-            // Log the overall decision
+            // Log the overall adjustment summary
+            val summary = datadogParameterControl.getAdjustmentSummary()
             datadogIntegration.logSearchDecision(
                 "datadog_query_${lastDatadogQueryTime.epochSecond}",
                 "parameter_analysis_complete",
-                adjustments.reason.ifEmpty { "No adjustments needed" }
+                "Current adjustments: $summary. Reason: ${adjustments.reason}"
             )
             
         } catch (e: Exception) {
@@ -179,5 +216,12 @@ class DatadogEnhancedSearchAlgorithm<T> : MioAlgorithm<T>() where T : Individual
         }
         
         return solution
+    }
+    
+    /**
+     * Override to use the custom parameter control that allows dynamic adjustments
+     */
+    override fun getAdaptiveParameterControl(): AdaptiveParameterControl {
+        return datadogParameterControl
     }
 }
