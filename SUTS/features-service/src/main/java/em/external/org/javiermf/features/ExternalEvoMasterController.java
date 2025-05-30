@@ -17,7 +17,6 @@ import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -102,28 +101,15 @@ public class ExternalEvoMasterController extends ExternalSutController {
     }
 
     public String[] getJVMParameters() {
-        List<String> params = new ArrayList<>(Arrays.asList(
+        return new String[]{
+//                "-Dspring.datasource.url=" + dbUrl(false) + ";DB_CLOSE_DELAY=-1",
+//                "-Dspring.datasource.driver-class-name=" + getDatabaseDriverName(),
                 //FIXME: re-enable once fixed issue with Spring
                 "-Dspring.datasource.url=" + dbUrl() + ";DB_CLOSE_DELAY=-1",
                 "-Dspring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
                 "-Dspring.datasource.username=sa",
                 "-Dspring.datasource.password"
-        ));
-        
-        if (Boolean.parseBoolean(System.getProperty("evomaster.datadog.enabled", "false"))) {
-            String serviceName = System.getProperty("evomaster.datadog.service.name", "features-service");
-            String agentHost = System.getProperty("evomaster.datadog.agent.host", "localhost");
-            String agentPort = System.getProperty("evomaster.datadog.agent.port", "8126");
-            
-            params.add("-Ddd.service=" + serviceName);
-            params.add("-Ddd.agent.host=" + agentHost);
-            params.add("-Ddd.agent.port=" + agentPort);
-            params.add("-Ddd.trace.enabled=true");
-            params.add("-Ddd.logs.injection=true");
-            params.add("-Ddd.profiling.enabled=true");
-        }
-        
-        return params.toArray(new String[0]);
+        };
     }
 
     @Override
