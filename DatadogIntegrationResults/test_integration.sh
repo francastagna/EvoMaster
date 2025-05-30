@@ -22,8 +22,8 @@ cd /home/ubuntu/repos/EvoMaster-fork
 java -jar core/target/evomaster.jar \
      --algorithm=DATADOG_ENHANCED \
      --enableDatadogIntegration=true \
-     --datadogApiKey=5c729a3e675a02ad9bf794c74b2b7d4c \
-     --datadogAppKey=c6a4485efe69378f2088090b17791a0fc46cff89 \
+     --datadogApiKey=[REDACTED] \
+     --datadogAppKey=[REDACTED] \
      --datadogApiUrl=https://us5.datadoghq.com \
      --datadogServiceName=features-service \
      --outputFolder=DatadogIntegrationResults/tests \
