@@ -65,7 +65,8 @@ abstract class AbstractGeneticAlgorithm<T> : SearchAlgorithm<T>() where T : Indi
     /** Call at the end of each searchOnce to report generation aggregates. */
     protected fun endGeneration() {
         val snapshot = population.toList()
-        observers.forEach { it.onGenerationEnd(snapshot) }
+        val bestScore = snapshot.maxOfOrNull { score(it) } ?: 0.0
+        observers.forEach { it.onGenerationEnd(snapshot, bestScore) }
     }
 
     /** Start a new step inside current iteration. */
@@ -198,13 +199,8 @@ abstract class AbstractGeneticAlgorithm<T> : SearchAlgorithm<T>() where T : Indi
     /**
      * Combined fitness of a suite computed only over [frozenTargets] when set; otherwise full combined fitness.
      */
-    protected fun score(w: WtsEvalIndividual<T>): Double {
+    public fun score(w: WtsEvalIndividual<T>): Double {
         if (w.suite.isEmpty()) return 0.0
-
-        // Explicitly use full combined fitness when solution source is POPULATION
-        if (config.gaSolutionSource == EMConfig.GASolutionSource.POPULATION) {
-            return w.calculateCombinedFitness()
-        }
 
         if (frozenTargets.isEmpty()) return w.calculateCombinedFitness()
 
