@@ -5,8 +5,6 @@ import org.evomaster.core.search.Individual
 import org.evomaster.core.search.algorithms.wts.WtsEvalIndividual
 import org.evomaster.core.search.service.SearchAlgorithm
 import kotlin.math.max
-//TODO: Note that this class is not fully tested.
-// It needs to be thoroughly verified whether this truly adheres to the intended algorithm.
 /**
  * An implementation of the Monotonic Genetic Algorithm.
  *
@@ -16,10 +14,12 @@ import kotlin.math.max
  * This is a more conservative variant compared to standard GAs, aiming to preserve
  * the quality of solutions across generations and avoid degradation in performance.
  *
- * This class builds on top of [StandardGeneticAlgorithm] but overrides
- * population update logic to enforce the monotonic condition.
+ * This class relies on the common GA utilities provided by
+ * [AbstractGeneticAlgorithm] (selection, crossover, mutation, population
+ * management), and overrides the generation update logic to enforce the
+ * monotonic condition.
  */
-class MonotonicGeneticAlgorithm<T> : StandardGeneticAlgorithm<T>() where T : Individual {
+class MonotonicGeneticAlgorithm<T> : AbstractGeneticAlgorithm<T>() where T : Individual {
 
     override fun getType(): EMConfig.Algorithm {
         return EMConfig.Algorithm.MonotonicGA
@@ -47,11 +47,16 @@ class MonotonicGeneticAlgorithm<T> : StandardGeneticAlgorithm<T>() where T : Ind
      * or the time budget is exhausted.
      */
     override fun searchOnce() {
+        beginGeneration()
+        // Freeze objectives for this generation
+        frozenTargets = archive.notCoveredTargets()
         val n = config.populationSize
 
-        val nextPop: MutableList<WtsEvalIndividual<T>> = mutableListOf()
+        // Start next population with elites (elitism)
+        val nextPop: MutableList<WtsEvalIndividual<T>> = formTheNextPopulation(population)
 
         while (nextPop.size < n) {
+            beginStep()
             val p1 = tournamentSelection()
             val p2 = tournamentSelection()
 
@@ -74,8 +79,8 @@ class MonotonicGeneticAlgorithm<T> : StandardGeneticAlgorithm<T>() where T : Ind
 
             // Monotonic replacement rule:
             // Keep offspring only if they're better than the parents
-            if (max(o1.calculateCombinedFitness(), o2.calculateCombinedFitness()) >
-                max(p1.calculateCombinedFitness(), p2.calculateCombinedFitness())
+            if (max(score(o1), score(o2)) >
+                max(score(p1), score(p2))
             ) {
                 nextPop.add(o1)
                 nextPop.add(o2)
@@ -85,12 +90,15 @@ class MonotonicGeneticAlgorithm<T> : StandardGeneticAlgorithm<T>() where T : Ind
             }
 
             if (!time.shouldContinueSearch()) {
+                endStep()
                 break
             }
+            endStep()
         }
 
         // Replace the current population with the newly formed one
         population.clear()
         population.addAll(nextPop)
+        endGeneration()
     }
 }

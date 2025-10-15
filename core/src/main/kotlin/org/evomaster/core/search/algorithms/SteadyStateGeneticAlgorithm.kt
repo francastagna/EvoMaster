@@ -5,8 +5,6 @@ import org.evomaster.core.search.Individual
 import org.evomaster.core.search.algorithms.wts.WtsEvalIndividual
 import org.evomaster.core.search.service.SearchAlgorithm
 import kotlin.math.max
-//TODO: Note that this class is not fully tested.
-// It needs to be thoroughly verified whether this truly adheres to the intended algorithm.
 /**
  * An implementation of the Steady-State Genetic Algorithm (SSGA).
  *
@@ -33,6 +31,12 @@ class SteadyStateGeneticAlgorithm<T> : StandardGeneticAlgorithm<T>() where T : I
      * - Replace the parents with the offspring only if the offspring are fitter.
      */
     override fun searchOnce() {
+        // Lifecycle: start generation
+        beginGeneration()
+        // Freeze objectives for this generation
+        frozenTargets = archive.notCoveredTargets()
+        // Start single steady-state step
+        beginStep()
         // Select two parents from the population
         val p1 = tournamentSelection()
         val p2 = tournamentSelection()
@@ -55,8 +59,8 @@ class SteadyStateGeneticAlgorithm<T> : StandardGeneticAlgorithm<T>() where T : I
         }
 
         // Only replace parents with offspring if the offspring are better
-        if (max(o1.calculateCombinedFitness(), o2.calculateCombinedFitness()) >
-            max(p1.calculateCombinedFitness(), p2.calculateCombinedFitness())) {
+        if (max(score(o1), score(o2)) >
+            max(score(p1), score(p2))) {
 
             // Replace both parents in the population
             population.remove(p1)
@@ -64,5 +68,8 @@ class SteadyStateGeneticAlgorithm<T> : StandardGeneticAlgorithm<T>() where T : I
             population.add(o1)
             population.add(o2)
         }
+        // End step and generation
+        endStep()
+        endGeneration()
     }
 }
