@@ -77,6 +77,9 @@ class SteadyStateGeneticAlgorithmTest {
             try {
                 epc.startSearch()
                 ga.setupBeforeSearch()
+                // Provide a deterministic selection order for the 2 selections in SSGA
+                val init = ga.populationSnapshot()
+                fixedSel.setOrder(listOf(init[0], init[1]))
                 ga.searchOnce()
 
                 // population size preserved
@@ -120,6 +123,8 @@ class SteadyStateGeneticAlgorithmTest {
             try {
                 epc.startSearch()
                 ga.setupBeforeSearch()
+                val init = ga.populationSnapshot()
+                fixedSel.setOrder(listOf(init[0], init[1]))
                 ga.searchOnce()
 
                 val nextPop = ga.populationSnapshot()
