@@ -5,8 +5,6 @@ import org.evomaster.core.search.Individual
 import org.evomaster.core.search.algorithms.wts.WtsEvalIndividual
 import org.evomaster.core.search.service.SearchAlgorithm
 import kotlin.math.max
-//TODO: Note that this class is not fully tested.
-// It needs to be thoroughly verified whether this truly adheres to the intended algorithm.
 /**
  * An implementation of the Monotonic Genetic Algorithm.
  *
